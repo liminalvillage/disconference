@@ -26,7 +26,7 @@ app.get('/', function(req, res) {
 	res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
 	res.setHeader('Access-Control-Allow-Headers', '*');
   });
-  server.listen(1337, function() { });
+  server.listen(process.env.PORT || 1337, function() { });
 // Creazione del server
 wsServer = new WebSocketServer({
     httpServer: server
