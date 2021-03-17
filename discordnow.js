@@ -1,38 +1,28 @@
-// Load up server and api libraries
-var app = require('express')();
-var http = require('http');
-var WebSocketServer = require('websocket').server;
+'use strict';
+// setup server
+const express = require('express');
+const { Server } = require('ws');
 
-app.get('/', function(req, res) {
-   res.sendFile('index.html');
-});
+const PORT = process.env.PORT || 3000;
+const INDEX = '/index.html';
+
+const server = express()
+  .use((req, res) => res.sendFile(INDEX, { root: __dirname }))
+  .listen(PORT, () => console.log(`Listening on ${PORT}`));
+
+const wss = new Server({ server });
 
 // Load up the discord.js library
 const Discord = require("discord.js");
 
-let now = {}
-let wsServer
-let connections = {}
-let i = 0
-
-app.get('/', function(req, res) {
-   res.sendFile('index.html');
+ //console.log("Server listening on port " + +process.env.PORT || 1337)
+ wss.on('connection', (ws) => {
+  console.log('Client connected');
+  ws.on('close', () => console.log('Client disconnected'));
 });
 
-
-  var server = http.createServer(function(request, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-	res.setHeader('Access-Control-Request-Method', '*');
-	res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
-	res.setHeader('Access-Control-Allow-Headers', '*');
-  });
-  server.listen(process.env.PORT || 1337, "0.0.0.0" , function() { });
-// Creazione del server
-wsServer = new WebSocketServer({
-    httpServer: server
-});
 // Gestione degli eventi
-wsServer.on('request', function(request) {
+wss.on('request', function(request) {
     i = i++;
     connections[i] = request.accept(null, request.origin);
     (connections[i]).on('message', function(message) {
@@ -77,8 +67,6 @@ function filterByParticipant(item, name) {
   return true;
 }
 
-
-
 var rooms = []; // empty Array, which you can push() values into
 
 
@@ -105,9 +93,10 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
         rooms[oldRoom.channelID].participants = []
 
       //update room name
-
-      rooms[newRoom.channelID].name = newRoom.channel.name
-      rooms[oldRoom.channelID].name = oldRoom.channel.name
+      if (newRoom.channel != null)
+        rooms[newRoom.channelID].name = newRoom.channel.name
+      if (oldRoom.channel != null)
+        rooms[oldRoom.channelID].name = oldRoom.channel.name
 
       // Create info
       let message = ""
@@ -130,7 +119,7 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
         else if (newRoom.channelID == null) //user left
         {  
           message = message + ("\nLeft: from " + oldRoom.channel.name + " (" + oldRoom.channelID + ")");
-          rooms[oldRoom.channelID].participants = room[oldRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
+          rooms[oldRoom.channelID].participants = rooms[oldRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
   
         }
         if (oldRoom.channelID != null && newRoom.channelID != null){ // user moved
@@ -147,10 +136,9 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
     console.log(rooms)
 
     // communicate the room update to every (active) connection
-    for (counter = 0; counter <= i; counter++) 
-    {
-        connections[counter]?.send(JSON.stringify(Object.assign({}, rooms))) 
-    }
+    wss.clients.forEach((client) => {
+      client.send(JSON.stringify(Object.assign({}, rooms))) 
+    })
 });
 
 client.login(config.token);
