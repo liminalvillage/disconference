@@ -15,26 +15,26 @@ const wss = new Server({ server });
 // Load up the discord.js library
 const Discord = require("discord.js");
 
- //console.log("Server listening on port " + +process.env.PORT || 1337)
- wss.on('connection', (ws) => {
+//console.log("Server listening on port " + +process.env.PORT || 1337)
+wss.on('connection', (ws) => {
   console.log('Client connected');
   ws.on('close', () => console.log('Client disconnected'));
 });
 
 // Gestione degli eventi
-wss.on('request', function(request) {
-    i = i++;
-    connections[i] = request.accept(null, request.origin);
-    (connections[i]).on('message', function(message) {
-        // Metodo eseguito alla ricezione di un messaggio
-        if (message.type === 'utf8') {
-            // Se il messaggio è una stringa, possiamo leggerlo come segue:
-            console.log('Received mesage: ' + message.utf8Data);
-        }
-    });
-    connections[i].on('close', function(connection) {
-        // Metodo eseguito alla chiusura della connessione
-    });
+wss.on('request', function (request) {
+  i = i++;
+  connections[i] = request.accept(null, request.origin);
+  (connections[i]).on('message', function (message) {
+    // Metodo eseguito alla ricezione di un messaggio
+    if (message.type === 'utf8') {
+      // Se il messaggio è una stringa, possiamo leggerlo come segue:
+      console.log('Received mesage: ' + message.utf8Data);
+    }
+  });
+  connections[i].on('close', function (connection) {
+    // Metodo eseguito alla chiusura della connessione
+  });
 });
 
 /*
@@ -69,139 +69,82 @@ function filterByParticipant(item, name) {
 
 var rooms = []; // empty Array, which you can push() values into
 
+// client.channels.get(rooms[0]).on('speaking', (user, speaking) => {
+//   console.log(user)
+// })
 
 client.on('voiceStateUpdate', (oldRoom, newRoom) => {
-      let participant = {}
-      participant.name = oldRoom.member.displayName
-      participant.avatar = oldRoom.member.user.displayAvatarURL()
-      participant.audio = !oldRoom.member.voice.selfMute
-      participant.video = oldRoom.member.voice.selfVideo
-      
+  let participant = {}
+  participant.name = oldRoom.member.displayName
+  participant.avatar = oldRoom.member.user.displayAvatarURL()
+  participant.audio = !oldRoom.member.voice.selfMute
+  participant.video = oldRoom.member.voice.selfVideo
 
-      //create new room  if it doesn't exist
-      if (!rooms[newRoom.channelID] )
-      rooms[newRoom.channelID] = {}
+  //create new room  if it doesn't exist
+  if (newRoom != null && !rooms[newRoom.channelID])
+    rooms[newRoom.channelID] = {}
 
-      if (!rooms[oldRoom.channelID] ) 
-        rooms[oldRoom.channelID] = {}
+  if (oldRoom != null && !rooms[oldRoom.channelID])
+    rooms[oldRoom.channelID] = {}
 
-      //create participant room  if it doesn't exist
-      if (!rooms[newRoom.channelID].participants )
-        rooms[newRoom.channelID].participants = []
+  //update room names
+  if (newRoom.channel != null)
+    rooms[newRoom.channelID].name = newRoom.channel.name
+  if (oldRoom.channel != null)
+    rooms[oldRoom.channelID].name = oldRoom.channel.name
 
-      if (!rooms[oldRoom.channelID].participants ) 
-        rooms[oldRoom.channelID].participants = []
 
-      //update room name
-      if (newRoom.channel != null)
-        rooms[newRoom.channelID].name = newRoom.channel.name
-      if (oldRoom.channel != null)
-        rooms[oldRoom.channelID].name = oldRoom.channel.name
+  //create participant room  if it doesn't exist
+  if (!rooms[newRoom.channelID].participants)
+    rooms[newRoom.channelID].participants = []
 
-      // Create info
-      let message = ""
-      message += ( "\nName: " + oldRoom.member.displayName);
-      message += ( "\nAvatar: " + oldRoom.member.user.displayAvatarURL());
-      
-      if (oldRoom.channelID == newRoom.channelID) // A/V status change
-      { 
-        rooms[newRoom.channelID].participants = rooms[newRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
-        rooms[newRoom.channelID].participants.push(participant)
-      }
-      else //Room change
+  if (!rooms[oldRoom.channelID].participants)
+    rooms[oldRoom.channelID].participants = []
+
+
+  // Create info
+  let message = ""
+  message += ("\nName: " + oldRoom.member.displayName);
+  message += ("\nAvatar: " + oldRoom.member.user.displayAvatarURL());
+  message += ("\Audio: " + !oldRoom.member.voice.selfMute);
+  message += ("\nAvatar: " + oldRoom.member.voice.selfVideo);
+
+  if (oldRoom.channelID == newRoom.channelID) // A/V status change
+  {
+    rooms[newRoom.channelID].participants = rooms[newRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
+    rooms[newRoom.channelID].participants.push(participant)
+  }
+  else //Room change
+  {
+    if (oldRoom.channelID == null) //user joined
+    {
+      message += ("\nJoined: " + newRoom.channel.name + " (" + newRoom.channelID + ")");
+      rooms[newRoom.channelID].participants.push(participant)
+
+    }
+    else if (newRoom.channelID == null) //user left
+    {
+      message += ("\nLeft: from " + oldRoom.channel.name + " (" + oldRoom.channelID + ")");
+      rooms[oldRoom.channelID].participants = rooms[oldRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
+
+    }
+    if (oldRoom.channelID != null && newRoom.channelID != null) { // user moved
       {
-        if (oldRoom.channelID == null) //user joined
-        {  
-          message = message + ("\nJoined: " + newRoom.channel.name + " (" + newRoom.channelID + ")");
-          rooms[newRoom.channelID].participants.push(participant)
+        message += ("\nMoved: from " + oldRoom.channel.name + " (" + oldRoom.channelID + ") to " + newRoom.channel.name + " (" + newRoom.channelID + ")");
 
-        }
-        else if (newRoom.channelID == null) //user left
-        {  
-          message = message + ("\nLeft: from " + oldRoom.channel.name + " (" + oldRoom.channelID + ")");
-          rooms[oldRoom.channelID].participants = rooms[oldRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
-  
-        }
-        if (oldRoom.channelID != null && newRoom.channelID != null){ // user moved
-        {
-          message = message + ("\nMoved: from " + oldRoom.channel.name + " (" + oldRoom.channelID + ") to " + newRoom.channel.name + " (" + newRoom.channelID + ")");
-          
-          rooms[newRoom.channelID].participants.push(participant)
-          rooms[oldRoom.channelID].participants = rooms[oldRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
-        }
+        rooms[newRoom.channelID].participants.push(participant)
+        rooms[oldRoom.channelID].participants = rooms[oldRoom.channelID].participants.filter(item => filterByParticipant(item, participant.name))
       }
     }
+  }
 
-    console.log (message)
-    console.log(rooms)
+  console.log(message)
+  console.log(rooms)
 
-    // communicate the room update to every (active) connection
-    wss.clients.forEach((client) => {
-      client.send(JSON.stringify(Object.assign({}, rooms))) 
-    })
+  // communicate the room update to every (active) connection
+  wss.clients.forEach((client) => {
+    client.send(JSON.stringify(Object.assign({}, rooms)))
+  })
 });
 
 client.login(config.token);
-
-//utilities
-
-// if (!Array.prototype.filter){
-//   Array.prototype.filter = function(func, thisArg) {
-//     'use strict';
-//     if ( ! ((typeof func === 'Function' || typeof func === 'function') && this) )
-//         throw new TypeError();
-
-//     var len = this.length >>> 0,
-//         res = new Array(len), // preallocate array
-//         t = this, c = 0, i = -1;
-
-//     var kValue;
-//     if (thisArg === undefined){
-//       while (++i !== len){
-//         // checks to see if the key was set
-//         if (i in this){
-//           kValue = t[i]; // in case t is changed in callback
-//           if (func(t[i], i, t)){
-//             res[c++] = kValue;
-//           }
-//         }
-//       }
-//     }
-//     else{
-//       while (++i !== len){
-//         // checks to see if the key was set
-//         if (i in this){
-//           kValue = t[i];
-//           if (func.call(thisArg, t[i], i, t)){
-//             res[c++] = kValue;
-//           }
-//         }
-//       }
-//     }
-
-//     res.length = c; // shrink down array to proper size
-//     return res;
-//   };
-// }
-
-
-function arrayToJSONObject (arr){
-  //header
-  var keys = arr[0];
-
-  //vacate keys from main array
-  var newArr = arr.slice(1, arr.length);
-
-  var formatted = [],
-  data = newArr,
-  cols = keys,
-  l = cols.length;
-  for (var i=0; i<data.length; i++) {
-          var d = data[i],
-                  o = {};
-          for (var j=0; j<l; j++)
-                  o[cols[j]] = d[j];
-          formatted.push(o);
-  }
-  return formatted;
-}
