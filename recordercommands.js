@@ -45,11 +45,11 @@ exports.exit = function (msg) {
     
     //make sure it's .last() not .first().  some discord js magic going on rn
     const { channel: voiceChannel, connection: conn } = msg.guild.voiceStates.cache.last();
-    const dispatcher = conn.play(__dirname + "/sounds/badumtss.mp3", { volume: 0.45 });
-    dispatcher.on("finish", () => {
+    // const dispatcher = conn.play(__dirname + "/sounds/badumtss.mp3", { volume: 0.45 });
+    // dispatcher.on("finish", () => {
         voiceChannel.leave();
         console.log(`\nSTOPPED RECORDING\n`);
-    });
+    // });
     
 };
 
