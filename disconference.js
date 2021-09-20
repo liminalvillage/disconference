@@ -2,7 +2,7 @@
 'use strict';
 
 const { ApolloServer, gql } = require('apollo-server');
-
+var fs = require('fs');
 // A schema is a collection of type definitions (hence "typeDefs")
 // that together define the "shape" of queries that are executed against
 // your data.
@@ -33,12 +33,20 @@ const typeDefs = gql`
      id: String
      participants : [Event]
      invite : String
+     server : String
   }
 
   type Status{
     time: String
     event: Event
     rooms: [Room]
+  }
+
+  type Item{
+    name: String
+    topic: String
+    time: String
+    server: String
   }
  
   # The "Query" type is special: it lists all of the available queries that
@@ -49,21 +57,34 @@ const typeDefs = gql`
     events (name: String!): [Event]
     db: [Status]
     latest: Status
+    programme: [Item]
   }
 `;
 
-var fs = require('fs');
+
 var db = []
+var programme = [];
 var latest ={}
 
 //loads old data if it exists
 try {
-  if (fs.existsSync('./db.json')) {
+  if (fs.existsSync(__dirname + '/db.json')) {
     //file exists
-    db =  JSON.parse(fs.readFileSync('./db.json'));
+    db =  JSON.parse(fs.readFileSync(__dirname + '/db.json'));
+    latest = db[db.length-1]
+    console.log(db)
   }
 } catch(err) {
-  //do nothing
+  //do nothinng
+}
+try {
+  if (fs.existsSync(__dirname + '/programme.json')) {
+    //file exists
+    programme =  JSON.parse(fs.readFileSync(__dirname + '/programme.json'));
+    console.log(programme)
+  }
+} catch(err) {
+  //do nothinng
 }
 
 
@@ -78,8 +99,8 @@ const resolvers = {
       const { name } = args;
       var statuses = db.filter((a) => name.includes(a.event.name))
       return  statuses.map((a) => a.event) 
-    }
-
+    },
+    programme:() => programme
   }
 }
 
@@ -112,45 +133,6 @@ const PORT = process.env.PORT || 3000
 
 const INDEX = '/logs.log';
 
-
-// setup server
-const express = require('express');
-const { Server } = require('ws');
-
-
-
-const server = express()
-  .use((req, res) => res.sendFile(INDEX, { root: __dirname }))
-  .listen(PORT, () => { console.log(`Listening on ${PORT}`) });
-
-const wss = new Server({ server });
-
-//console.log("Server listening on port " + +process.env.PORT || 1337)
-wss.on('connection', (ws) => {
-  //console.log('Client connected');
-  ws.send(JSON.stringify(Object.assign({}, rooms)))
-  //ws.on('close', () => console.log('Client disconnected'));
-});
-
-//receiving requests
-// wss.on('request', function (request) {
-//   i = i++;
-//   connections[i] = request.accept(null, request.origin);
-//   (connections[i]).on('message', function (message) {
-//     // Metodo eseguito alla ricezione di un messaggio
-//     if (message.type === 'utf8') {
-//       // Se il messaggio è una stringa, possiamo leggerlo come segue:
-//       console.log('Received mesage: ' + message.utf8Data);
-//     }
-//   });
-//   connections[i].on('close', function (connection) {
-//     // Metodo eseguito alla chiusura della connessione
-//   });
-// });
-
-/*
- DISCORD.JS VERSION 12 CODE
-*/
 // Load up the discord.js library
 const Discord = require("discord.js");
 
@@ -202,7 +184,7 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
 
     rooms[newRoom.channelID] = {}
     rooms[newRoom.channelID].id = newRoom.channelID
-
+    rooms[newRoom.channelID].server = newRoom.guild.id
     let channel = client.channels.cache.get(newRoom.channelID)
 
     channel.createInvite(
@@ -287,10 +269,7 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
   payload +=('}')
 
   latest = JSON.parse(payload)
-  db.push(latest)
-
-  console.log(db)
- 
+  db.push(latest) 
   console.log(payload + ',');
 
   // console.log('{')
@@ -298,11 +277,6 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
   // console.log('"event": {' + message + '},')
   // console.log('"rooms": ' + JSON.stringify(Object.values(rooms)))
   // console.log('},')
-
-  // communicate the room update to every (active) connection
-  wss.clients.forEach((client) => {
-    client.send(JSON.stringify(Object.assign({}, rooms)))
-  })
 });
 
 client.login(config.token);
@@ -312,7 +286,6 @@ client.login(config.token);
 //===== message based interface ============
 
 var stats = {};
-var programme = [];
 
 function arrayRemove(arr, value) {
   return arr.filter(function (ele) {
@@ -324,8 +297,8 @@ function printProgramme(){
   var p = "Programme: \n"
   for (var i = 0; i < programme.length; i++) {
     var d = new Date(programme[i].time)
-    p += d.toString() + " - "
-    p += programme[i].topic + " (by " + programme[i].name + ")\n"
+    p += d.toTimeString().slice(0,5) + " - "
+    p += programme[i].topic + " by " + programme[i].name + " (On " + programme[i].server +" server )\n"
   }
   return p
 }
@@ -342,13 +315,13 @@ client.on('message', msg => {
     
   // if (msg.content.startsWith(config.prefix)) {
     
-  if (commandBody[0] === ('record') && commandBody[1]) 
-    commands.enter(msg, commandBody[1]);
+  // if (commandBody[0] === ('record') && commandBody[1]) 
+  //   commands.enter(msg, commandBody[1]);
 
-  if (commandBody[0] === ('stop')) { 
-    commands.exit(msg); 
-    commands.merge(msg);
-  }
+  // if (commandBody[0] === ('stop')) { 
+  //   commands.exit(msg); 
+  //   commands.merge(msg);
+  // }
 
 
   if (commandBody[0] === 'programme') {
@@ -367,7 +340,7 @@ client.on('message', msg => {
   };
 
   if (commandBody[0] === 'help') {
-    msg.channel.send('Disconference Commands:\n !schedule [Time in CET] [Description] - Schedules a new event (eg: "!schedule 10:00 Yoga")\n!programme - consult the programme\n!cancel - deletes all your existing entries')
+    msg.channel.send('Disconference Commands:\n !schedule [Time] [Description] - Schedules a new event in your timezone (eg: "!schedule 10:00 Yoga")\n!programme - consult the programme\n!cancel - deletes all your existing entries')
       .catch(error => {
         console.log(error);
       });
@@ -380,6 +353,23 @@ client.on('message', msg => {
         console.log(error);
       });
   };
+
+  if (commandBody[0] ==='restart') {
+    var d = new Date();
+    fs.writeFile(__dirname + '/db/db_'+ d.toTimeString() + '.json',  JSON.stringify(db), function(err) {
+      if (err) {
+          console.log(err);
+      }
+    });
+    fs.writeFile(__dirname + '/db/programme_'+ d.toTimeString() + '.json',  JSON.stringify(programme), function(err) {
+      if (err) {
+          console.log(err);
+      }
+    });
+    db = []
+    programme =[]
+  };
+
 
 
   if (commandBody[0] === 'schedule') {
@@ -406,6 +396,7 @@ client.on('message', msg => {
     o.name = name
     o.topic = topic
     o.time = d.toUTCString()
+    o.server = msg.guild.toString()
 
     programme.push(o)
 

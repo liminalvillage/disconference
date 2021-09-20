@@ -5,3 +5,5 @@ logs.log
 Analysis/
 saved/
 recordings/
+config.json
+db/
