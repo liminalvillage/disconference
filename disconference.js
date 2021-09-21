@@ -66,25 +66,29 @@ var db = []
 var programme = [];
 var latest ={}
 
-//loads old data if it exists
-try {
-  if (fs.existsSync(__dirname + '/db.json')) {
-    //file exists
-    db =  JSON.parse(fs.readFileSync(__dirname + '/db.json'));
-    latest = db[db.length-1]
-    console.log(db)
+loadData()
+
+function loadData(){
+  //loads old data if it exists
+  try {
+    if (fs.existsSync(__dirname + '/db.json')) {
+      //file exists
+      db =  JSON.parse(fs.readFileSync(__dirname + '/db.json'));
+      latest = db[db.length-1]
+      console.log(db)
+    }
+  } catch(err) {
+    //do nothinng
   }
-} catch(err) {
-  //do nothinng
-}
-try {
-  if (fs.existsSync(__dirname + '/programme.json')) {
-    //file exists
-    programme =  JSON.parse(fs.readFileSync(__dirname + '/programme.json'));
-    console.log(programme)
+  try {
+    if (fs.existsSync(__dirname + '/programme.json')) {
+      //file exists
+      programme =  JSON.parse(fs.readFileSync(__dirname + '/programme.json'));
+      console.log(programme)
+    }
+  } catch(err) {
+    //do nothinng
   }
-} catch(err) {
-  //do nothinng
 }
 
 
@@ -184,28 +188,35 @@ client.on('voiceStateUpdate', (oldRoom, newRoom) => {
 
     rooms[newRoom.channelID] = {}
     rooms[newRoom.channelID].id = newRoom.channelID
-    rooms[newRoom.channelID].server = newRoom.guild.id
+    rooms[newRoom.channelID].server = newRoom.guild.toString()
     let channel = client.channels.cache.get(newRoom.channelID)
-
-    channel.createInvite(
-      {
-        //maxAge: 10 * 60 * 1000, // maximum time for the invite, in milliseconds
-        //maxUses: 100 // maximum times it can be used
-      },
-    ).then((invite) => { rooms[newRoom.channelID].invite = invite.code });
-
+    try{
+      channel.createInvite(
+        {
+          //maxAge: 10 * 60 * 1000, // maximum time for the invite, in milliseconds
+          //maxUses: 100 // maximum times it can be used
+        },
+      ).then((invite) => { rooms[newRoom.channelID].invite = invite.code });
+    } catch(err) {
+      //do nothinng
+    }
   }
 
   if (oldRoom && oldRoom.channelID && rooms[oldRoom.channelID] == null) {
     rooms[oldRoom.channelID] = {}
     rooms[oldRoom.channelID].id = oldRoom.channelID
+    rooms[oldRoom.channelID].server = oldRoom.guild.toString()
     let channel = client.channels.cache.get(oldRoom.channelID)
-    channel.createInvite(
-      {
-        //maxAge: 10 * 60 * 1000, // maximum time for the invite, in milliseconds
-        //maxUses: 100 // maximum times it can be used
-      },
-    ).then((invite) => { rooms[oldRoom.channelID].invite = invite.code });
+    try {
+      channel.createInvite(
+        {
+          //maxAge: 10 * 60 * 1000, // maximum time for the invite, in milliseconds
+          //maxUses: 100 // maximum times it can be used
+        },
+      ).then((invite) => { rooms[oldRoom.channelID].invite = invite.code });
+    } catch(err) {
+      //do nothinng
+    }  
   }
   //update room names
   if (newRoom.channelID)
@@ -347,7 +358,7 @@ client.on('message', msg => {
   };
 
   if (commandBody[0] ==='cancel') {
-    programme = programme.filter(function(element) {element.name === msg.author.username})
+    programme = programme.filter(item => item.name !== msg.author.username)
     msg.channel.send(printProgramme())
       .catch(error => {
         console.log(error);
@@ -368,6 +379,7 @@ client.on('message', msg => {
     });
     db = []
     programme =[]
+    loadData()
   };
 
 
