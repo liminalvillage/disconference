@@ -305,15 +305,21 @@ function arrayRemove(arr, value) {
 };
 
 function printProgramme(){
-  var p = "Programme: \n"
+  var p = "Programme (CEST): \n"
   for (var i = 0; i < programme.length; i++) {
     var d = new Date(programme[i].time)
-    p += d.toTimeString().slice(0,5) + " - "
-    p += programme[i].topic + " by " + programme[i].name + " (On " + programme[i].server +" server )\n"
+    p += addZero(d.getHours()) +":"+ addZero(d.getMinutes()) + " - "
+    p += programme[i].topic + " by " + programme[i].name + " (On " + programme[i].server +")\n"
   }
   return p
 }
 
+function addZero (i) {
+  if (i < 10) {
+    i = "0" + i;
+  }
+  return i;
+}
 
 client.on('message', msg => {
   if (msg.content.charAt(0) === config.prefix) {
