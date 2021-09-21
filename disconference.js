@@ -401,7 +401,7 @@ client.on('message', msg => {
     programme.push(o)
 
     programme = programme.sort(function (a, b) {
-      return new Date(a.time) - new Date(b.time);
+      return (new Date(a.time)).getTime() - (new Date(b.time)).getTime();
     })
     msg.channel.send(name + " has scheduled " + topic + " at " + time)
       .catch(error => {
